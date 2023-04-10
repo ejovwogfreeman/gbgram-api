@@ -35,7 +35,7 @@ const registerUser = async (req, res) => {
             token: accessToken(user),
           });
 
-          await sendEmail(email, "Welcome On Board", "register.html");
+          await sendEmail(email, "Welcome On Board", "html/register.html");
         } else {
           res.status(200).json({ message: "An error occured" });
         }
@@ -62,10 +62,13 @@ const loginUser = async (req, res) => {
         const comparedPassword = await bcrypt.compare(password, hashedPassword);
         if (comparedPassword === true) {
           const { password, ...others } = user._doc;
+
           res.status(200).json({
             ...others,
             token: accessToken(user),
           });
+
+          await sendEmail(email, "Login Successful", "html/login.html");
         } else {
           res.status(400).json({ message: "passwords do not match" });
         }

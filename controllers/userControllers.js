@@ -42,41 +42,50 @@ const updateUser = async (req, res) => {
 
   const email = user.email;
 
-  await sendEmail(email, "Account Updated", "update.html");
+  await sendEmail(email, "Account Updated", "html/update.html");
 
   res.status(200).json({ message: "Profile Updated Successfully" });
 };
 
 /////////////////////////////
-/////////RESET PASSWORD//////
+///////CHANGE PASSWORD///////
 /////////////////////////////
 
-const resetPassword = async (req, res) => {
-  const { email, password } = req.body;
+const changePassword = async (req, res) => {
+  const { oldPassword, password } = req.body;
 
-  // Find the user in your database using their email address
-  const user = await User.findOne({ email });
+  if (password && oldPassword) {
+    const user = await User.findById(req.user._id);
+    const oldhashedPassword = user.password;
+    const comparedPassword = await bcrypt.compare(
+      oldPassword,
+      oldhashedPassword
+    );
+    if (user && comparedPassword === true) {
+      if (oldPassword === password) {
+        return res
+          .status(400)
+          .send({ message: "Old password cannot be thesame as new password" });
+      }
+      const salt = await bcrypt.genSalt(10);
+      const hashedpassword = await bcrypt.hash(password, salt);
+      await User.findByIdAndUpdate(req.user._id, { password: hashedpassword });
 
-  if (!user) {
-    return res.status(404).json({ error: true, message: "User not found" });
+      const user = await User.findById(req.user._id);
+
+      const email = user.email;
+
+      await sendEmail(
+        email,
+        "Password Changed Successfully",
+        "html/change_password.html"
+      );
+
+      res.status(200).json({ message: "Password Changed Successfully" });
+    } else {
+      res.status(400).json({ message: "Old Password is not correct" });
+    }
   }
-
-  // Hash the new password using bcrypt
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // Update the user's password in your database
-  const updatedUser = await User.findByIdAndUpdate(user._id, {
-    password: hashedPassword,
-  });
-
-  if (!updatedUser) {
-    return res
-      .status(500)
-      .json({ error: true, message: "Password update failed" });
-  }
-
-  return res.status(200).json({ message: "Password reset is successful" });
 };
 
 //////////////////////////////
@@ -84,24 +93,65 @@ const resetPassword = async (req, res) => {
 //////////////////////////////
 
 const forgotPasword = async (req, res) => {
-  const email = req.body.email;
+  const { email } = req.body;
   const user = await User.findOne({ email });
 
-  // compare the password and send
   if (user) {
-    await sendEmail(email, "Password Reset", "reset.html");
+    await sendEmail(email, "Password Reset", "html/reset.html");
     res.status(200).json({ message: "An email has been sent to you" });
   } else {
     res.status(400).json({
       message: "We could not find an account with that email",
-      error: true,
     });
   }
+};
+
+/////////////////////////////
+////////RESET PASSWORD///////
+/////////////////////////////
+
+const resetPassword = async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  const oldhashedPassword = user.password;
+  const comparedPassword = await bcrypt.compare(password, oldhashedPassword);
+
+  if (comparedPassword === true) {
+    return res
+      .status(400)
+      .send({ message: "Old password cannot be thesame as new password" });
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  const updatedUser = await User.findByIdAndUpdate(user._id, {
+    password: hashedPassword,
+  });
+
+  if (!updatedUser) {
+    return res.status(500).json({ message: "Password update failed" });
+  }
+
+  await sendEmail(
+    email,
+    "Password Reset Successful",
+    "html/reset_password_successful.html"
+  );
+
+  return res.status(200).json({ message: "Password reset is successful" });
 };
 
 module.exports = {
   getUser,
   updateUser,
-  resetPassword,
+  changePassword,
   forgotPasword,
+  resetPassword,
 };
