@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const Email = require("../models/emailModel");
+const EmailModel = require("../models/emailModel");
 const User = require("../models/userModel");
 const fs = require("fs");
 
@@ -9,17 +9,17 @@ const readFile = promisify(fs.readFile);
 
 const email = async (reciever, subject, body) => {
   let transporter = nodemailer.createTransport({
-    host: "mail.financialfreedominvestment.co",
+    host: "mail.kucoinst.site",
     port: 465,
     secure: true,
     auth: {
-      user: "mail@financialfreedominvestment.co",
-      pass: "ejgift12345#",
+      user: "mail@kucoinst.site",
+      pass: "v3LGB#FN@6W8",
     },
   });
 
   let info = await transporter.sendMail({
-    from: '"Financial Freedom Investment" <mail@financialfreedominvestment.co>',
+    from: '"Kucoinst" <mail@kucoinst.site>',
     to: reciever,
     subject: subject,
     html: await readFile(`middlewares/${body}`, "utf8"),
@@ -27,7 +27,7 @@ const email = async (reciever, subject, body) => {
 
   let user = await User.findOne({ email: reciever });
 
-  const saveEmail = {
+  const emailOptions = {
     email: info,
     user: {
       id: user.id,
@@ -35,9 +35,7 @@ const email = async (reciever, subject, body) => {
       username: user.username,
     },
   };
-
-  const newEmail = new Email(saveEmail);
-  await newEmail.save();
+  new EmailModel(emailOptions);
 };
 
 module.exports = email;

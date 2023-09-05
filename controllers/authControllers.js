@@ -8,41 +8,44 @@ const accessToken = require("../middlewares/accessTokenMiddleware");
 /////////////////////////////
 
 const registerUser = async (req, res) => {
-  const { username, email, password } = req.body;
+  const { email, password } = req.body;
+  let hashedPassword = null; // Declare password outside the try block
+
   try {
-    if (!username || !email || !password) {
-      res.status(400).json({ message: "please fill all fields" });
-    } else {
-      const userExists = await User.findOne({ email });
-      if (userExists) {
-        res.status(400).send({ message: "User already exists" });
-      } else {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please fill all fields" });
+    }
 
-        const user = new User({
-          username,
-          email,
-          password: hashedPassword,
-        });
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
-        await user.save();
+    const salt = await bcrypt.genSalt(10);
+    hashedPassword = await bcrypt.hash(password, salt); // Assign the hashed password
 
-        if (user) {
-          const { password, ...others } = user._doc;
-          res.status(200).json({
-            ...others,
-            token: accessToken(user),
-          });
+    const user = new User({
+      username: email.split("@")[0],
+      email,
+      password: hashedPassword,
+    });
 
-          await sendEmail(email, "Welcome On Board", "html/register.html");
-        } else {
-          res.status(200).json({ message: "An error occured" });
-        }
-      }
+    await user.save();
+
+    if (user) {
+      const { password, ...others } = user._doc;
+      const token = accessToken(user);
+
+      await sendEmail(email, "Welcome On Board", "html/register.html");
+
+      return res.status(200).json({
+        ...others,
+        token,
+      });
     }
   } catch (err) {
-    res.status(400).json(err);
+    console.error(err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 

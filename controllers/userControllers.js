@@ -19,32 +19,43 @@ const getUser = async (req, res) => {
 //////////UPDATE USER////////
 /////////////////////////////
 const updateUser = async (req, res) => {
-  const { username } = req.body;
+  // const { username } = req.body;
+  const userId = req.user._id;
+
+  const updateFields = {};
 
   if (req.files && req.files.length > 0) {
-    let filesArray = [];
-    req.files.forEach((element) => {
-      const file = {
+    const filesArray = req.files.map((element) => {
+      return {
         fileName: element.originalname,
         fileType: element.mimetype,
         link: `file/${element.filename}`,
       };
-      filesArray.push(file);
     });
-    await User.findByIdAndUpdate(req.user._id, { profileImage: filesArray });
+
+    updateFields.profileImage = filesArray;
   }
 
-  if (username && username !== "null") {
-    await User.findByIdAndUpdate(req.user._id, { username: username });
+  try {
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const user = await User.findById(userId);
+    const email = user.email;
+    console.log(email);
+    await sendEmail(email, "Profile Updated Successfully", "html/update.html");
+
+    res.status(200).json({ message: "Profile Updated Successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
-
-  const user = await User.findById(req.user._id);
-
-  const email = user.email;
-
-  await sendEmail(email, "Account Updated", "html/update.html");
-
-  res.status(200).json({ message: "Profile Updated Successfully" });
 };
 
 /////////////////////////////
